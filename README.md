@@ -54,3 +54,23 @@ curl -X POST http://127.0.0.1:8000/api/scan
 ```bash
 pytest -q
 ```
+
+
+## Visualizzare l'app online
+
+### Opzione 1: Deploy gratuito su Render
+
+1. Crea un account su Render e collega questo repository.
+2. Render rileverà `render.yaml` automaticamente.
+3. Fai deploy del servizio web.
+4. Otterrai un URL pubblico tipo `https://luck-the-system.onrender.com`.
+
+In ambiente demo puoi lasciare `AMAZON_USE_MOCK=true`; quando vuoi dati reali imposta le chiavi Amazon PA-API nelle variabili ambiente.
+
+### Opzione 2: Avvio locale rapido
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Poi apri `http://localhost:8000`.
