@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luck The System</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>🔥 Luck The System</h1>
+      <p>Solo offerte Amazon con prezzo estremamente basso rispetto alla media.</p>
+      <button id="scan-btn">Scansiona ora</button>
+    </header>
+
+    <main>
+      <section id="deals-grid" class="grid">
+        {% if deals %}
+          {% for deal in deals %}
+            <article class="card">
+              <img src="{{ deal.image_url }}" alt="{{ deal.title }}" />
+              <h2>{{ deal.title }}</h2>
+              <p class="price">{{ deal.current_price }} {{ deal.currency }}</p>
+              <p class="meta">Media: {{ deal.average_price }} {{ deal.currency }}</p>
+              <p class="discount">-{{ deal.discount_percent }}%</p>
+              <a href="{{ deal.detail_page_url }}" target="_blank" rel="noopener noreferrer">Vai all'offerta</a>
+            </article>
+          {% endfor %}
+        {% else %}
+          <p>Nessuna offerta estrema trovata per ora. Avvia una scansione.</p>
+        {% endif %}
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
