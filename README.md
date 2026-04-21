@@ -1,86 +1,76 @@
-# Calcolatore costo orario dipendente
+# Luck The System
 
-Web app statica (HTML/CSS/JS) per stimare il costo orario e giornaliero reale di un dipendente includendo:
+Web app che aggrega offerte Amazon tramite Product Advertising API (PA-API) e pubblica solo i prodotti con prezzo eccezionalmente basso rispetto alla loro media storica.
 
-- CCNL selezionato (ferie, ROL, ex festività, TFR, soglia età apprendistato)
-- retribuzione lorda, superminimo, straordinari, trasferte e bonus
-- contributi aziendali, assicurazioni/fondi, malattia stimata
-- simulazione su giornate/ore di progetto
-- salvataggio profili dipendente in `localStorage`
-- caricamento catalogo CCNL da feed JSON esterno
+## Funzionalità
 
-## Avvio locale
+- Dashboard web con immagini, nome, prezzo, sconto e link affiliato.
+- API backend (`FastAPI`) con endpoint per:
+  - leggere offerte correnti;
+  - trigger manuale scansione dell'agente.
+- Agente AI-like (euristico) in background che:
+  - interroga periodicamente Amazon;
+  - mantiene una storia prezzi locale;
+  - calcola uno score di anomalia prezzo;
+  - pubblica solo prodotti sotto soglia (es. -35% o più rispetto alla media).
+- Modalità demo senza credenziali Amazon (`AMAZON_USE_MOCK=true`).
+
+## Setup rapido
 
 ```bash
-python3 -m http.server 8080
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload
 ```
 
-Poi apri `http://localhost:8080`.
+Apri `http://127.0.0.1:8000`.
 
-## Deploy online rapido
+## Configurazione Amazon PA-API
 
-[![Deploy with Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+Compila `.env` con le tue chiavi:
 
-### Opzione A: Netlify (consigliato)
-1. Carica il repository su GitHub.
-2. In Netlify: **Add new site** → **Import an existing project**.
-3. Seleziona il repository e deploya (nessun comando build necessario).
-4. Il file `netlify.toml` è già pronto per SPA fallback e supporto embed iframe.
+- `AMAZON_ACCESS_KEY`
+- `AMAZON_SECRET_KEY`
+- `AMAZON_ASSOCIATE_TAG`
+- `AMAZON_REGION`
+- `AMAZON_HOST`
 
-### Opzione B: Vercel
-1. Importa il repository in Vercel.
-2. Deploy diretto senza build command.
-3. Il file `vercel.json` è già pronto per rewrite su `index.html` e supporto embed.
+> Nota: in assenza di credenziali, la modalità mock resta utile per sviluppo UI/agent.
 
-## Collegamento automatico da GitHub Actions
+## Avvio agente continuo
 
-Sono inclusi 2 workflow già pronti:
+L'agente parte automaticamente all'avvio del backend e gira ogni `SCAN_INTERVAL_SECONDS` (default: 1800).
 
-- `.github/workflows/deploy-netlify.yml`
-- `.github/workflows/deploy-vercel.yml`
+Puoi forzare una scansione con:
 
-Per abilitarli, imposta i segreti nel repository GitHub:
-
-### Netlify secrets
-- `NETLIFY_AUTH_TOKEN`
-- `NETLIFY_SITE_ID`
-
-### Vercel secrets
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-Dopo il salvataggio dei secrets, pushando su `main` partirà il deploy automatico.
-
-## Embed in sito aziendale
-
-```html
-<iframe
-  src="https://tuodominio.example/calcolatore-costo-orario/"
-  width="100%"
-  height="900"
-  style="border:0;"
-  loading="lazy"
-></iframe>
+```bash
+curl -X POST http://127.0.0.1:8000/api/scan
 ```
 
-## Formato feed CCNL JSON
+## Test
 
-```json
-[
-  {
-    "id": "commercio-terziario",
-    "name": "CCNL Commercio e Terziario",
-    "updatedAt": "2026-03-01",
-    "source": "https://fonte.example/ccnl/commercio",
-    "ferieDays": 26,
-    "rolHours": 56,
-    "exFestivitaHours": 32,
-    "tfrRate": 7.41,
-    "apprenticeshipAgeLimit": 29
-  }
-]
+```bash
+pytest -q
 ```
 
-> Nota: i valori del catalogo predefinito sono dimostrativi e vanno sostituiti con dati ufficiali aggiornati.
+
+## Visualizzare l'app online
+
+### Opzione 1: Deploy gratuito su Render
+
+1. Crea un account su Render e collega questo repository.
+2. Render rileverà `render.yaml` automaticamente.
+3. Fai deploy del servizio web.
+4. Otterrai un URL pubblico tipo `https://luck-the-system.onrender.com`.
+
+In ambiente demo puoi lasciare `AMAZON_USE_MOCK=true`; quando vuoi dati reali imposta le chiavi Amazon PA-API nelle variabili ambiente.
+
+### Opzione 2: Avvio locale rapido
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Poi apri `http://localhost:8000`.
