@@ -1,257 +1,265 @@
-const defaultCcnlCatalog = [
-  {
-    id: 'metalmeccanico-industria',
-    name: 'CCNL Metalmeccanico Industria',
-    source: 'Catalogo iniziale locale (da aggiornare con feed esterno)',
-    updatedAt: '2026-01-15',
-    ferieDays: 26,
-    rolHours: 72,
-    exFestivitaHours: 32,
-    tfrRate: 7.41,
-    apprenticeshipAgeLimit: 29
-  },
-  {
-    id: 'commercio-terziario',
-    name: 'CCNL Commercio e Terziario',
-    source: 'Catalogo iniziale locale (da aggiornare con feed esterno)',
-    updatedAt: '2025-12-20',
-    ferieDays: 26,
-    rolHours: 56,
-    exFestivitaHours: 32,
-    tfrRate: 7.41,
-    apprenticeshipAgeLimit: 29
-  },
-  {
-    id: 'studi-professionali',
-    name: 'CCNL Studi Professionali',
-    source: 'Catalogo iniziale locale (da aggiornare con feed esterno)',
-    updatedAt: '2025-11-02',
-    ferieDays: 26,
-    rolHours: 72,
-    exFestivitaHours: 32,
-    tfrRate: 7.41,
-    apprenticeshipAgeLimit: 29
-  }
-];
-
 const state = {
-  ccnlCatalog: loadStorage('ccnlCatalog', defaultCcnlCatalog),
-  profiles: loadStorage('employeeProfiles', []),
-  selectedProfileId: null
+  users: [
+    { id: 1, name: 'Giulia Rinaldi', email: 'giulia.rinaldi@pha-se.it', role: 'Project Manager', master: true },
+    { id: 2, name: 'Marco Bianchi', email: 'marco.bianchi@pha-se.it', role: 'Validation Engineer', master: false },
+    { id: 3, name: 'Sara Conti', email: 'sara.conti@pha-se.it', role: 'Consultant', master: false }
+  ],
+  clients: [
+    {
+      id: crypto.randomUUID(),
+      company: 'Farmaceutica Alfa S.p.A.',
+      contact: 'Luca Ferri',
+      contactEmail: 'luca.ferri@alfa.it',
+      services: 'Convalida impianto sterile, IQ/OQ/PQ e audit qualità',
+      status: 'in_corso',
+      deadline: '2026-06-30',
+      documents: 'Piano di convalida, report SAT, check list deviazioni',
+      milestones: ['Kickoff completato', 'IQ al 75%', 'Formazione team QA in agenda'],
+      assignees: [1, 2],
+      calendar: ['2026-04-24: FAT review', '2026-05-02: On-site commissioning'],
+      alert: 'Richiesta firma protocollo OQ entro venerdì'
+    },
+    {
+      id: crypto.randomUUID(),
+      company: 'BioMed Labs',
+      contact: 'Elena Marini',
+      contactEmail: 'procurement@biomedlabs.com',
+      services: 'Supporto cGMP e miglioramento documentazione batch record',
+      status: 'in_attesa',
+      deadline: '2026-05-20',
+      documents: 'Gap analysis e action plan',
+      milestones: ['Assessment iniziale completato', 'In attesa feedback cliente'],
+      assignees: [1, 3],
+      calendar: ['2026-04-28: Review KPI processo'],
+      alert: 'Mancano allegati per audit FDA'
+    }
+  ],
+  currentEmployee: null,
+  currentClientEmail: null
 };
 
-const el = (id) => document.getElementById(id);
+const views = {
+  employeeAuth: document.querySelector('#employee-auth'),
+  clientAuth: document.querySelector('#client-auth'),
+  employeeDashboard: document.querySelector('#employee-dashboard'),
+  clientDashboard: document.querySelector('#client-dashboard'),
+  summaryCards: document.querySelector('#summary-cards'),
+  calendarList: document.querySelector('#calendar-list'),
+  alertsList: document.querySelector('#alerts-list'),
+  clientCards: document.querySelector('#client-cards'),
+  statusFilter: document.querySelector('#status-filter'),
+  masterPanel: document.querySelector('#master-panel'),
+  assignEmployee: document.querySelector('#assign-employee'),
+  assignClient: document.querySelector('#assign-client'),
+  clientView: document.querySelector('#client-view')
+};
 
-function loadStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+const labels = {
+  in_corso: 'In corso',
+  in_attesa: 'In attesa',
+  da_avviare: 'Da avviare',
+  concluso: 'Concluso'
+};
 
-function saveStorage(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function euro(value) {
-  return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value || 0);
-}
-
-function toNumber(id) {
-  return Number(el(id).value || 0);
-}
-
-function renderCcnl() {
-  const select = el('ccnlSelect');
-  select.innerHTML = '';
-  state.ccnlCatalog.forEach((c) => {
-    const option = document.createElement('option');
-    option.value = c.id;
-    option.textContent = c.name;
-    select.append(option);
+document.querySelectorAll('[data-nav]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.nav;
+    views.employeeAuth.classList.toggle('hidden', target !== 'employee');
+    views.clientAuth.classList.toggle('hidden', target !== 'client');
   });
-  updateCcnlMeta();
-}
+});
 
-function selectedCcnl() {
-  return state.ccnlCatalog.find((c) => c.id === el('ccnlSelect').value) || state.ccnlCatalog[0];
-}
+document.querySelector('#employee-login-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = document.querySelector('#employee-email').value.trim().toLowerCase();
+  const masterFlag = document.querySelector('#employee-master').checked;
+  const employee = state.users.find((u) => u.email === email);
 
-function updateCcnlMeta() {
-  const c = selectedCcnl();
-  if (!c) return;
-  el('ccnlMeta').innerHTML = `
-    <strong>Aggiornamento:</strong> ${c.updatedAt}<br />
-    <strong>Ferie:</strong> ${c.ferieDays} giorni · <strong>ROL:</strong> ${c.rolHours}h · <strong>Ex festività:</strong> ${c.exFestivitaHours}h<br />
-    <strong>Età max apprendistato:</strong> ${c.apprenticeshipAgeLimit} anni<br />
-    <strong>Fonte:</strong> ${c.source}
-  `;
-}
-
-async function loadRemoteCatalog() {
-  const url = el('ccnlUrl').value.trim();
-  if (!url) return alert('Inserisci una URL valida.');
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Errore nel download del catalogo.');
-    const payload = await response.json();
-    if (!Array.isArray(payload)) throw new Error('Formato JSON non valido: atteso array.');
-
-    const normalized = payload
-      .filter((x) => x.id && x.name)
-      .map((x) => ({
-        id: x.id,
-        name: x.name,
-        source: x.source || url,
-        updatedAt: x.updatedAt || new Date().toISOString().slice(0, 10),
-        ferieDays: Number(x.ferieDays || 26),
-        rolHours: Number(x.rolHours || 0),
-        exFestivitaHours: Number(x.exFestivitaHours || 0),
-        tfrRate: Number(x.tfrRate || 7.41),
-        apprenticeshipAgeLimit: Number(x.apprenticeshipAgeLimit || 29)
-      }));
-
-    if (!normalized.length) throw new Error('Nessun contratto valido trovato nel feed.');
-
-    state.ccnlCatalog = normalized;
-    saveStorage('ccnlCatalog', normalized);
-    renderCcnl();
-    alert(`Catalogo CCNL aggiornato: ${normalized.length} contratti.`);
-  } catch (error) {
-    alert(`Impossibile aggiornare il catalogo: ${error.message}`);
+  if (!employee) {
+    alert('Utente non trovato. Usa una mail aziendale valida.');
+    return;
   }
-}
 
-function collectForm() {
-  return {
-    id: state.selectedProfileId || crypto.randomUUID(),
-    employeeName: el('employeeName').value.trim() || 'Dipendente tipo',
-    employeeAge: toNumber('employeeAge'),
-    level: el('level').value.trim(),
-    grossMonthly: toNumber('grossMonthly'),
-    superminimum: toNumber('superminimum'),
-    overtime: toNumber('overtime'),
-    travel: toNumber('travel'),
-    annualBonus: toNumber('annualBonus'),
-    hoursPerDay: toNumber('hoursPerDay'),
-    workingDaysYear: toNumber('workingDaysYear'),
-    employerContrib: toNumber('employerContrib'),
-    insuranceRate: toNumber('insuranceRate'),
-    sickRate: toNumber('sickRate'),
-    extraMonths: toNumber('extraMonths'),
-    projectDays: toNumber('projectDays'),
-    projectExtraHours: toNumber('projectExtraHours'),
-    ccnlId: el('ccnlSelect').value
+  state.currentEmployee = { ...employee, master: masterFlag || employee.master };
+  views.employeeAuth.classList.add('hidden');
+  views.clientAuth.classList.add('hidden');
+  views.employeeDashboard.classList.remove('hidden');
+  renderEmployeeDashboard();
+});
+
+document.querySelector('#client-login-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = document.querySelector('#client-email').value.trim().toLowerCase();
+  state.currentClientEmail = email;
+  views.employeeAuth.classList.add('hidden');
+  views.clientAuth.classList.add('hidden');
+  views.clientDashboard.classList.remove('hidden');
+  renderClientView();
+});
+
+document.querySelector('#logout-employee').addEventListener('click', () => {
+  state.currentEmployee = null;
+  views.employeeDashboard.classList.add('hidden');
+  views.employeeAuth.classList.remove('hidden');
+});
+
+document.querySelector('#logout-client').addEventListener('click', () => {
+  state.currentClientEmail = null;
+  views.clientDashboard.classList.add('hidden');
+  views.clientAuth.classList.remove('hidden');
+});
+
+document.querySelector('#status-filter').addEventListener('change', renderEmployeeDashboard);
+
+document.querySelector('#new-client-btn').addEventListener('click', () => {
+  document.querySelector('#client-modal').showModal();
+});
+
+document.querySelector('#cancel-client').addEventListener('click', () => {
+  document.querySelector('#client-modal').close();
+});
+
+document.querySelector('#new-client-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!state.currentEmployee) return;
+
+  const client = {
+    id: crypto.randomUUID(),
+    company: document.querySelector('#client-name').value,
+    contact: document.querySelector('#client-contact').value,
+    contactEmail: document.querySelector('#client-contact-email').value.toLowerCase(),
+    status: document.querySelector('#client-status').value,
+    services: document.querySelector('#client-services').value,
+    deadline: document.querySelector('#client-deadline').value,
+    documents: document.querySelector('#client-docs').value,
+    milestones: ['Scheda creata', 'Raccolta documenti iniziale'],
+    assignees: [state.currentEmployee.id],
+    calendar: [`${document.querySelector('#client-deadline').value}: scadenza principale`],
+    alert: 'Verificare se servono materiali aggiuntivi dal cliente'
   };
+
+  state.clients.unshift(client);
+  document.querySelector('#client-modal').close();
+  document.querySelector('#new-client-form').reset();
+  renderEmployeeDashboard();
+});
+
+document.querySelector('#new-employee-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.querySelector('#new-employee-name').value;
+  const email = document.querySelector('#new-employee-email').value.toLowerCase();
+  const role = document.querySelector('#new-employee-role').value;
+  const nextId = Math.max(...state.users.map((u) => u.id)) + 1;
+
+  state.users.push({ id: nextId, name, email, role, master: false });
+  e.target.reset();
+  renderMasterControls();
+  alert('Dipendente creato con successo.');
+});
+
+document.querySelector('#assign-project-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const employeeId = Number(views.assignEmployee.value);
+  const clientId = views.assignClient.value;
+  const client = state.clients.find((c) => c.id === clientId);
+  if (!client || client.assignees.includes(employeeId)) return;
+  client.assignees.push(employeeId);
+  renderEmployeeDashboard();
+});
+
+function renderEmployeeDashboard() {
+  if (!state.currentEmployee) return;
+  const mine = state.clients.filter((c) => c.assignees.includes(state.currentEmployee.id));
+  const filter = views.statusFilter.value;
+  const visible = filter === 'all' ? mine : mine.filter((c) => c.status === filter);
+
+  const inCorso = mine.filter((c) => c.status === 'in_corso').length;
+  const inAttesa = mine.filter((c) => c.status === 'in_attesa').length;
+  const conclusi = mine.filter((c) => c.status === 'concluso').length;
+
+  views.summaryCards.innerHTML = `
+    <div class="summary-box"><strong>${mine.length}</strong><span>Clienti assegnati</span></div>
+    <div class="summary-box"><strong>${inCorso}</strong><span>Progetti in corso</span></div>
+    <div class="summary-box"><strong>${inAttesa}</strong><span>In attesa</span></div>
+    <div class="summary-box"><strong>${conclusi}</strong><span>Conclusi</span></div>
+  `;
+
+  views.calendarList.innerHTML = mine
+    .flatMap((c) => c.calendar.map((e) => `<li><strong>${c.company}</strong> — ${e}</li>`))
+    .join('') || '<li>Nessun evento programmato.</li>';
+
+  views.alertsList.innerHTML = mine
+    .map((c) => `<li><strong>${c.company}</strong>: ${c.alert}</li>`)
+    .join('') || '<li>Nessun alert attivo.</li>';
+
+  views.clientCards.innerHTML = visible
+    .map((c) => {
+      const staff = c.assignees
+        .map((id) => state.users.find((u) => u.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      return `
+        <article class="client-card">
+          <h4>${c.company}</h4>
+          <p class="client-meta"><strong>Referente:</strong> ${c.contact} (${c.contactEmail})</p>
+          <p class="client-meta"><strong>Servizi:</strong> ${c.services}</p>
+          <p class="client-meta"><strong>Scadenza:</strong> ${fmtDate(c.deadline)}</p>
+          <p class="client-meta"><strong>Team:</strong> ${staff}</p>
+          <p class="client-meta"><strong>Documenti:</strong> ${c.documents || 'Nessuno'}</p>
+          <p class="client-meta"><strong>Milestones:</strong> ${c.milestones.join(' • ')}</p>
+          <button class="btn" onclick="updateStatus('${c.id}')">Cambia stato</button>
+          <span class="status-chip status-${c.status}">${labels[c.status]}</span>
+        </article>
+      `;
+    })
+    .join('') || '<p>Nessuna scheda cliente per questo filtro.</p>';
+
+  views.masterPanel.classList.toggle('hidden', !state.currentEmployee.master);
+  if (state.currentEmployee.master) renderMasterControls();
 }
 
-function fillForm(profile) {
-  Object.entries(profile).forEach(([k, v]) => {
-    const node = el(k);
-    if (!node) return;
-    node.value = v;
-  });
-  if (profile.ccnlId) el('ccnlSelect').value = profile.ccnlId;
-  state.selectedProfileId = profile.id;
-  updateCcnlMeta();
-}
-
-function refreshProfilesSelect() {
-  const select = el('savedProfiles');
-  select.innerHTML = '<option value="">-- Seleziona profilo --</option>';
-  state.profiles.forEach((p) => {
-    const option = document.createElement('option');
-    option.value = p.id;
-    option.textContent = `${p.employeeName} (${p.level || 'n/d'})`;
-    select.append(option);
-  });
-  if (state.selectedProfileId) select.value = state.selectedProfileId;
-}
-
-function saveProfile() {
-  const profile = collectForm();
-  const index = state.profiles.findIndex((p) => p.id === profile.id);
-  if (index >= 0) state.profiles[index] = profile;
-  else state.profiles.push(profile);
-
-  state.selectedProfileId = profile.id;
-  saveStorage('employeeProfiles', state.profiles);
-  refreshProfilesSelect();
-  alert('Profilo salvato con successo.');
-}
-
-function resetProfile() {
-  state.selectedProfileId = null;
-  el('employeeName').value = '';
-  el('level').value = '';
-  el('savedProfiles').value = '';
-}
-
-function calculate() {
-  const data = collectForm();
-  const ccnl = selectedCcnl();
-
-  const monthlyGross = data.grossMonthly + data.superminimum + data.overtime + data.travel;
-  const annualGrossWithMonths = monthlyGross * (12 + data.extraMonths);
-  const annualGross = annualGrossWithMonths + data.annualBonus;
-
-  const contribCost = annualGross * (data.employerContrib / 100);
-  const insuranceCost = annualGross * (data.insuranceRate / 100);
-  const tfrCost = annualGross * (ccnl.tfrRate / 100);
-
-  const hoursYearBase = data.workingDaysYear * data.hoursPerDay;
-  const ferieHours = ccnl.ferieDays * data.hoursPerDay;
-  const permitsHours = ccnl.rolHours + ccnl.exFestivitaHours;
-  const sickHours = hoursYearBase * (data.sickRate / 100);
-
-  const productiveHours = Math.max(1, hoursYearBase - ferieHours - permitsHours - sickHours);
-  const absenceCost = (annualGross / Math.max(1, hoursYearBase)) * (ferieHours + permitsHours + sickHours);
-
-  const totalAnnualCost = annualGross + contribCost + insuranceCost + tfrCost + absenceCost;
-  const effectiveHourlyCost = totalAnnualCost / productiveHours;
-  const effectiveDailyCost = effectiveHourlyCost * data.hoursPerDay;
-
-  const projectHours = data.projectDays * data.hoursPerDay + data.projectExtraHours;
-  const projectCost = projectHours * effectiveHourlyCost;
-
-  const ageNote = data.employeeAge <= ccnl.apprenticeshipAgeLimit
-    ? 'Età compatibile con soglia apprendistato CCNL.'
-    : 'Età oltre soglia apprendistato CCNL.';
-
-  const results = [
-    ['Costo annuo totale aziendale', euro(totalAnnualCost)],
-    ['Ore produttive annue stimate', `${productiveHours.toFixed(1)} h`],
-    ['Costo orario effettivo', euro(effectiveHourlyCost)],
-    ['Costo giornaliero effettivo', euro(effectiveDailyCost)],
-    ['Costo progetto simulato', euro(projectCost)],
-    ['Incidenza ferie+permessi+malattia', euro(absenceCost)],
-    ['Contributi e oneri annui', euro(contribCost + insuranceCost + tfrCost)],
-    ['Nota età / apprendistato', ageNote]
-  ];
-
-  el('resultGrid').innerHTML = results
-    .map(([title, value]) => `<div class="kpi"><span>${title}</span><strong>${value}</strong></div>`)
+function renderMasterControls() {
+  views.assignEmployee.innerHTML = state.users
+    .map((u) => `<option value="${u.id}">${u.name} (${u.role})</option>`)
+    .join('');
+  views.assignClient.innerHTML = state.clients
+    .map((c) => `<option value="${c.id}">${c.company}</option>`)
     .join('');
 }
 
-function bootstrap() {
-  renderCcnl();
-  refreshProfilesSelect();
-  el('ccnlSelect').addEventListener('change', updateCcnlMeta);
-  el('loadRemoteCcnl').addEventListener('click', loadRemoteCatalog);
-  el('saveProfile').addEventListener('click', saveProfile);
-  el('newProfile').addEventListener('click', resetProfile);
-  el('calculate').addEventListener('click', calculate);
+function renderClientView() {
+  const project = state.clients.find((c) => c.contactEmail.toLowerCase() === state.currentClientEmail);
+  if (!project) {
+    views.clientView.innerHTML = '<h3>Nessuna scheda trovata</h3><p>Contatta il tuo referente PHA.SE. per abilitare l’accesso.</p>';
+    return;
+  }
 
-  el('savedProfiles').addEventListener('change', (e) => {
-    const profile = state.profiles.find((p) => p.id === e.target.value);
-    if (profile) fillForm(profile);
-  });
-
-  calculate();
+  const lead = state.users.find((u) => u.id === project.assignees[0]);
+  views.clientView.innerHTML = `
+    <h3>${project.company}</h3>
+    <p><strong>Stato attività:</strong> <span class="status-chip status-${project.status}">${labels[project.status]}</span></p>
+    <p><strong>Servizi in corso:</strong> ${project.services}</p>
+    <p><strong>Scadenza principale:</strong> ${fmtDate(project.deadline)}</p>
+    <p><strong>Documenti condivisi:</strong> ${project.documents}</p>
+    <p><strong>Step principali:</strong> ${project.milestones.join(' • ')}</p>
+    <p><strong>Prossime attività:</strong></p>
+    <ul>${project.calendar.map((e) => `<li>${e}</li>`).join('')}</ul>
+    <hr>
+    <p><strong>Referente PHA.SE.:</strong> ${lead?.name || 'N/D'} (${lead?.email || 'N/D'})</p>
+    <p><strong>Canali utili:</strong> Upload documenti, richieste materiali, ticket dedicato e note meeting.</p>
+  `;
 }
 
-bootstrap();
+window.updateStatus = (clientId) => {
+  const client = state.clients.find((c) => c.id === clientId);
+  if (!client) return;
+  const flow = ['da_avviare', 'in_corso', 'in_attesa', 'concluso'];
+  const idx = flow.indexOf(client.status);
+  client.status = flow[(idx + 1) % flow.length];
+  renderEmployeeDashboard();
+};
+
+function fmtDate(iso) {
+  if (!iso) return 'N/D';
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('it-IT');
+}

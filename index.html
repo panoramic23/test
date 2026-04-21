@@ -1,104 +1,182 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Calcolatore costo orario dipendente</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <header class="hero">
-      <div>
-        <h1>Calcolatore costo orario aziendale</h1>
-        <p>
-          Stima il costo reale orario e giornaliero del dipendente includendo CCNL,
-          ferie, permessi, malattia, TFR, mensilità aggiuntive e altri oneri.
-        </p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHA.SE. Project Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__content">
+      <h1>Gestione Progetti PHA.SE.</h1>
+      <p>Web app unica per dipendenti e clienti: monitoraggio progetti, documentazione, scadenze, condivisione e reportistica.</p>
+      <div class="hero__actions">
+        <button class="btn btn--primary" data-nav="employee">Area Dipendenti</button>
+        <button class="btn btn--secondary" data-nav="client">Area Clienti</button>
       </div>
-      <div class="badge">Embed ready · iFrame friendly</div>
-    </header>
+    </div>
+  </header>
 
-    <main class="grid">
-      <section class="card">
-        <h2>1) CCNL e fonti</h2>
-        <label>
-          Contratto collettivo
-          <select id="ccnlSelect"></select>
+  <main class="layout">
+    <section class="card auth" id="employee-auth">
+      <h2>Accesso Dipendenti</h2>
+      <p>Accedi con email aziendale per visualizzare dashboard, clienti e strumenti operativi.</p>
+      <form id="employee-login-form" class="form">
+        <label>Email aziendale
+          <input type="email" id="employee-email" required placeholder="nome.cognome@pha-se.it">
         </label>
-        <details>
-          <summary>Aggiorna catalogo CCNL da URL JSON</summary>
+        <label>Password
+          <input type="password" id="employee-password" required minlength="8" placeholder="********">
+        </label>
+        <label class="check">
+          <input type="checkbox" id="employee-master">
+          Accesso come dipendente master
+        </label>
+        <button type="submit" class="btn btn--primary">Accedi</button>
+      </form>
+    </section>
+
+    <section class="card auth hidden" id="client-auth">
+      <h2>Accesso Clienti</h2>
+      <p>Consulta stato attività, documenti condivisi e contatti del referente PHA.SE.</p>
+      <form id="client-login-form" class="form">
+        <label>Email cliente
+          <input type="email" id="client-email" required placeholder="contatto@azienda.it">
+        </label>
+        <label>Password
+          <input type="password" id="client-password" required minlength="8" placeholder="********">
+        </label>
+        <button type="submit" class="btn btn--primary">Accedi</button>
+      </form>
+    </section>
+
+    <section id="employee-dashboard" class="hidden">
+      <div class="dashboard-top">
+        <h2>Dashboard Dipendente</h2>
+        <div class="dashboard-actions">
+          <button class="btn btn--secondary" id="new-client-btn">Nuova scheda cliente</button>
+          <button class="btn" id="logout-employee">Logout</button>
+        </div>
+      </div>
+
+      <div class="grid summary-grid" id="summary-cards"></div>
+
+      <div class="grid two-col">
+        <article class="card">
+          <h3>Calendario lavorativo (prossimi impegni)</h3>
+          <ul id="calendar-list" class="list"></ul>
+        </article>
+        <article class="card">
+          <h3>Alert e attività prioritarie</h3>
+          <ul id="alerts-list" class="list"></ul>
+        </article>
+      </div>
+
+      <article class="card">
+        <div class="card__head">
+          <h3>Schede clienti assegnate</h3>
           <label>
-            URL sorgente CCNL (JSON)
-            <input id="ccnlUrl" type="url" placeholder="https://.../ccnl.json" />
-          </label>
-          <button id="loadRemoteCcnl" type="button">Carica catalogo</button>
-          <p class="hint">
-            Suggerimento: puoi usare un endpoint aziendale che espone l’ultima
-            versione dei CCNL principali.
-          </p>
-        </details>
-        <div id="ccnlMeta" class="meta"></div>
-      </section>
-
-      <section class="card">
-        <h2>2) Impostazioni globali</h2>
-        <div class="fields two">
-          <label>Ore lavorative giorno <input id="hoursPerDay" type="number" step="0.1" min="1" value="8" /></label>
-          <label>Giorni lavorativi anno <input id="workingDaysYear" type="number" min="1" value="220" /></label>
-          <label>% contributi aziendali <input id="employerContrib" type="number" step="0.1" min="0" value="30" /></label>
-          <label>% INAIL e fondi <input id="insuranceRate" type="number" step="0.1" min="0" value="2.5" /></label>
-          <label>% malattia stimata annua <input id="sickRate" type="number" step="0.1" min="0" value="3" /></label>
-          <label>Mensilità aggiuntive <input id="extraMonths" type="number" min="0" step="1" value="1" /></label>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>3) Profilo dipendente</h2>
-        <div class="fields two">
-          <label>Nome profilo <input id="employeeName" type="text" placeholder="Mario Rossi / Dipendente tipo" /></label>
-          <label>Età <input id="employeeAge" type="number" min="14" max="100" value="30" /></label>
-          <label>Inquadramento <input id="level" type="text" placeholder="Es. 4° livello" /></label>
-          <label>Retribuzione mensile lorda (€) <input id="grossMonthly" type="number" min="0" step="0.01" value="1800" /></label>
-          <label>Superminimo mensile (€) <input id="superminimum" type="number" min="0" step="0.01" value="0" /></label>
-          <label>Straordinari medi mese (€) <input id="overtime" type="number" min="0" step="0.01" value="120" /></label>
-          <label>Trasferte medie mese (€) <input id="travel" type="number" min="0" step="0.01" value="0" /></label>
-          <label>Bonus annuo variabile (€) <input id="annualBonus" type="number" min="0" step="0.01" value="0" /></label>
-        </div>
-        <div class="actions">
-          <button id="saveProfile" type="button">Salva profilo</button>
-          <button id="newProfile" type="button" class="ghost">Nuovo</button>
-          <label>Profili salvati
-            <select id="savedProfiles"></select>
+            Filtro stato
+            <select id="status-filter">
+              <option value="all">Tutti</option>
+              <option value="in_corso">In corso</option>
+              <option value="in_attesa">In attesa</option>
+              <option value="da_avviare">Da avviare</option>
+              <option value="concluso">Concluso</option>
+            </select>
           </label>
         </div>
-      </section>
+        <div id="client-cards" class="grid client-grid"></div>
+      </article>
 
-      <section class="card">
-        <h2>4) Simulazione progetto</h2>
-        <div class="fields two">
-          <label>Giornate su progetto <input id="projectDays" type="number" min="1" value="20" /></label>
-          <label>Ore extra su progetto <input id="projectExtraHours" type="number" min="0" step="0.5" value="0" /></label>
+      <article class="card hidden" id="master-panel">
+        <h3>Pannello Master</h3>
+        <p>Gestione utenti, assegnazione progetti e amministrazione applicazione.</p>
+        <div class="grid two-col">
+          <div>
+            <h4>Nuovo dipendente</h4>
+            <form id="new-employee-form" class="form compact">
+              <label>Nome e cognome
+                <input type="text" id="new-employee-name" required>
+              </label>
+              <label>Email aziendale
+                <input type="email" id="new-employee-email" required>
+              </label>
+              <label>Ruolo
+                <select id="new-employee-role">
+                  <option value="Consultant">Consultant</option>
+                  <option value="Validation Engineer">Validation Engineer</option>
+                  <option value="Project Manager">Project Manager</option>
+                </select>
+              </label>
+              <button class="btn btn--primary" type="submit">Crea dipendente</button>
+            </form>
+          </div>
+          <div>
+            <h4>Assegnazione rapida progetti</h4>
+            <form id="assign-project-form" class="form compact">
+              <label>Dipendente
+                <select id="assign-employee"></select>
+              </label>
+              <label>Cliente
+                <select id="assign-client"></select>
+              </label>
+              <button class="btn btn--secondary" type="submit">Assegna</button>
+            </form>
+          </div>
         </div>
-        <button id="calculate" type="button">Calcola costo reale</button>
-      </section>
+      </article>
+    </section>
 
-      <section class="card result">
-        <h2>Risultati</h2>
-        <div id="resultGrid" class="result-grid"></div>
-        <p class="hint">
-          Le formule sono modificabili e pensate per simulazioni interne. Verificare
-          sempre con consulente del lavoro e dati aggiornati.
-        </p>
-      </section>
-    </main>
+    <section id="client-dashboard" class="hidden">
+      <div class="dashboard-top">
+        <h2>Area Cliente</h2>
+        <button class="btn" id="logout-client">Logout</button>
+      </div>
+      <article class="card" id="client-view"></article>
+    </section>
+  </main>
 
-    <footer>
-      <small>
-        Personalizzazione: modifica colori e font in <code>styles.css</code>.
-        Per incorporare: usa un iframe verso questa pagina.
-      </small>
-    </footer>
+  <dialog id="client-modal">
+    <form class="form" id="new-client-form" method="dialog">
+      <h3>Nuova scheda cliente</h3>
+      <label>Ragione sociale
+        <input type="text" id="client-name" required>
+      </label>
+      <label>Referente cliente
+        <input type="text" id="client-contact" required>
+      </label>
+      <label>Email cliente
+        <input type="email" id="client-contact-email" required>
+      </label>
+      <label>Stato progetto
+        <select id="client-status">
+          <option value="da_avviare">Da avviare</option>
+          <option value="in_corso">In corso</option>
+          <option value="in_attesa">In attesa</option>
+          <option value="concluso">Concluso</option>
+        </select>
+      </label>
+      <label>Servizi richiesti
+        <textarea id="client-services" rows="3" placeholder="Ingegneria, commissioning, convalida, quality control..."></textarea>
+      </label>
+      <label>Scadenza principale
+        <input type="date" id="client-deadline" required>
+      </label>
+      <label>Documenti (descrizione)
+        <textarea id="client-docs" rows="2" placeholder="URS, FAT/SAT, protocollo IQ/OQ/PQ..."></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="cancel-client">Annulla</button>
+        <button class="btn btn--primary" type="submit">Salva</button>
+      </div>
+    </form>
+  </dialog>
 
-    <script src="app.js"></script>
-  </body>
+  <script src="app.js"></script>
+</body>
 </html>
