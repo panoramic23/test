@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calcolatore costo orario dipendente</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <h1>Calcolatore costo orario aziendale</h1>
+        <p>
+          Stima il costo reale orario e giornaliero del dipendente includendo CCNL,
+          ferie, permessi, malattia, TFR, mensilità aggiuntive e altri oneri.
+        </p>
+      </div>
+      <div class="badge">Embed ready · iFrame friendly</div>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <h2>1) CCNL e fonti</h2>
+        <label>
+          Contratto collettivo
+          <select id="ccnlSelect"></select>
+        </label>
+        <details>
+          <summary>Aggiorna catalogo CCNL da URL JSON</summary>
+          <label>
+            URL sorgente CCNL (JSON)
+            <input id="ccnlUrl" type="url" placeholder="https://.../ccnl.json" />
+          </label>
+          <button id="loadRemoteCcnl" type="button">Carica catalogo</button>
+          <p class="hint">
+            Suggerimento: puoi usare un endpoint aziendale che espone l’ultima
+            versione dei CCNL principali.
+          </p>
+        </details>
+        <div id="ccnlMeta" class="meta"></div>
+      </section>
+
+      <section class="card">
+        <h2>2) Impostazioni globali</h2>
+        <div class="fields two">
+          <label>Ore lavorative giorno <input id="hoursPerDay" type="number" step="0.1" min="1" value="8" /></label>
+          <label>Giorni lavorativi anno <input id="workingDaysYear" type="number" min="1" value="220" /></label>
+          <label>% contributi aziendali <input id="employerContrib" type="number" step="0.1" min="0" value="30" /></label>
+          <label>% INAIL e fondi <input id="insuranceRate" type="number" step="0.1" min="0" value="2.5" /></label>
+          <label>% malattia stimata annua <input id="sickRate" type="number" step="0.1" min="0" value="3" /></label>
+          <label>Mensilità aggiuntive <input id="extraMonths" type="number" min="0" step="1" value="1" /></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3) Profilo dipendente</h2>
+        <div class="fields two">
+          <label>Nome profilo <input id="employeeName" type="text" placeholder="Mario Rossi / Dipendente tipo" /></label>
+          <label>Età <input id="employeeAge" type="number" min="14" max="100" value="30" /></label>
+          <label>Inquadramento <input id="level" type="text" placeholder="Es. 4° livello" /></label>
+          <label>Retribuzione mensile lorda (€) <input id="grossMonthly" type="number" min="0" step="0.01" value="1800" /></label>
+          <label>Superminimo mensile (€) <input id="superminimum" type="number" min="0" step="0.01" value="0" /></label>
+          <label>Straordinari medi mese (€) <input id="overtime" type="number" min="0" step="0.01" value="120" /></label>
+          <label>Trasferte medie mese (€) <input id="travel" type="number" min="0" step="0.01" value="0" /></label>
+          <label>Bonus annuo variabile (€) <input id="annualBonus" type="number" min="0" step="0.01" value="0" /></label>
+        </div>
+        <div class="actions">
+          <button id="saveProfile" type="button">Salva profilo</button>
+          <button id="newProfile" type="button" class="ghost">Nuovo</button>
+          <label>Profili salvati
+            <select id="savedProfiles"></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>4) Simulazione progetto</h2>
+        <div class="fields two">
+          <label>Giornate su progetto <input id="projectDays" type="number" min="1" value="20" /></label>
+          <label>Ore extra su progetto <input id="projectExtraHours" type="number" min="0" step="0.5" value="0" /></label>
+        </div>
+        <button id="calculate" type="button">Calcola costo reale</button>
+      </section>
+
+      <section class="card result">
+        <h2>Risultati</h2>
+        <div id="resultGrid" class="result-grid"></div>
+        <p class="hint">
+          Le formule sono modificabili e pensate per simulazioni interne. Verificare
+          sempre con consulente del lavoro e dati aggiornati.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <small>
+        Personalizzazione: modifica colori e font in <code>styles.css</code>.
+        Per incorporare: usa un iframe verso questa pagina.
+      </small>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
